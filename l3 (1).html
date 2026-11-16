@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LabSticker — Premium Figure Sheet Generator</title>
+<style>
+  :root {
+    /* Default spacing & typography mechanics controlled dynamically by script */
+    --grid-gap: 16px;
+    --sticker-padding: 12px;
+    --page-margin: 8mm;
+    --caption-size: 10pt;
+
+    /* Modern Dark Theme Variables (Obsidian Velvet & Blood Red Glow) */
+    --primary: #dc2626;
+    --primary-dark: #991b1b;
+    --primary-light: #fef2f2;
+    --bg: #09090b;
+    --bg-gradient: radial-gradient(circle at 0% 0%, rgba(220, 38, 38, 0.12) 0, transparent 50%),
+                   radial-gradient(circle at 100% 100%, rgba(24, 24, 27, 0.8) 0, transparent 50%);
+    --card: rgba(24, 24, 27, 0.65);
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #f4f4f5;
+    --muted: #a1a1aa;
+    --danger: #ef4444;
+    --danger-light: rgba(239, 68, 68, 0.12);
+    --success: #10b981;
+    --success-light: rgba(16, 185, 129, 0.14);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --input-bg: rgba(9, 9, 11, 0.55);
+    --heading-color: #ffffff;
+    --theme-btn-bg: rgba(39, 39, 42, 0.65);
+    --theme-btn-border: rgba(255, 255, 255, 0.1);
+    --glass-header: rgba(9, 9, 11, 0.78);
+    --glass-footer: rgba(9, 9, 11, 0.85);
+    --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  /* Modern Light Theme Overrides (Snow White & Intense Blood Red) */
+  [data-theme="light"] {
+    --bg: #fcfcfd;
+    --bg-gradient: radial-gradient(circle at 0% 0%, rgba(153, 27, 27, 0.05) 0, transparent 50%),
+                   radial-gradient(circle at 100% 100%, rgba(244, 244, 245, 0.7) 0, transparent 50%);
+    --card: rgba(255, 255, 255, 0.8);
+    --border: rgba(153, 27, 27, 0.12);
+    --text: #18181b;
+    --muted: #71717a;
+    --input-bg: rgba(255, 255, 255, 0.95);
+    --heading-color: #7f1d1d;
+    --theme-btn-bg: rgba(244, 244, 245, 0.85);
+    --theme-btn-border: rgba(153, 27, 27, 0.15);
+    --glass-header: rgba(255, 255, 255, 0.85);
+    --glass-footer: rgba(255, 255, 255, 0.9);
+    --shadow: 0 8px 32px 0 rgba(153, 27, 27, 0.06);
+    --primary: #991b1b;
+    --primary-dark: #7f1d1d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: var(--font);
+    background-color: var(--bg);
+    background-image: var(--bg-gradient);
+    color: var(--text);
+    padding-top: 130px;
+    padding-bottom: 165px;
+    min-height: 100vh;
+    letter-spacing: -0.01em;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Glassmorphism App Header */
+  header.app-header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    background: var(--glass-header);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 24px;
+    text-align: center;
+    box-shadow: var(--shadow);
+  }
+  
+  header.app-header .header-content {
+    max-width: 960px;
+    margin: 0 auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  header.app-header h1 {
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    background: linear-gradient(to right, var(--text), var(--primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+  }
+  header.app-header p {
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+
+  .theme-toggle-container {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  @media (max-width: 768px) {
+    .theme-toggle-container { position: relative; top: 0; transform: none; margin-top: 10px; }
+    body { padding-top: 185px; }
+  }
+
+  .theme-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--theme-btn-border);
+    background: var(--theme-btn-bg);
+    color: var(--text);
+    border-radius: 30px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: var(--shadow);
+    transition: all 0.25s ease;
+  }
+  .theme-btn:hover { border-color: var(--primary); transform: translateY(-1px); }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 0 20px; flex: 1; width: 100%; }
+
+  /* Bento Layout Grid */
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 768px) {
+    .bento-grid { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--card);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 26px;
+    box-shadow: var(--shadow);
+    transition: background 0.3s ease, border 0.3s ease, transform 0.3s ease;
+  }
+  .card:hover { border-color: rgba(220, 38, 38, 0.22); }
+  .card.full-width { grid-column: span 2; }
+  @media (max-width: 768px) { .card.full-width { grid-column: span 1; } }
+
+  .card-header-flex {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .card-header-flex h2 { margin-bottom: 0; }
+
+  .card h2 {
+    font-size: 1.05rem;
+    color: var(--heading-color);
+    margin-bottom: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  /* Project Storage Toolbar */
+  .project-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .tool-btn {
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    background: var(--theme-btn-bg);
+    color: var(--text);
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+  }
+  .tool-btn:hover {
+    border-color: var(--primary);
+    background: rgba(220, 38, 38, 0.12);
+    transform: translateY(-1px);
+  }
+
+  .row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  .row:last-of-type { margin-bottom: 0; }
+  .field { flex: 1; min-width: 130px; }
+  .field label {
+    font-size: 0.76rem;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  
+  .field input, .field select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    font-size: 0.88rem;
+    background: var(--input-bg);
+    color: var(--text);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+    background: var(--bg);
+  }
+
+  .grid-config-wrap { display: flex; align-items: center; gap: 10px; }
+  .grid-config-separator { color: var(--muted); font-weight: bold; font-size: 1.1rem; }
+
+  /* Dropzone Styling */
+  .dropzone {
+    border: 2px dashed rgba(220, 38, 38, 0.35);
+    border-radius: 16px;
+    padding: 48px 20px;
+    text-align: center;
+    color: var(--text);
+    background: rgba(220, 38, 38, 0.02);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .dropzone:hover, .dropzone.dragover {
+    background: rgba(220, 38, 38, 0.07);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+  }
+  .dropzone strong { display: block; font-size: 1.08rem; margin-bottom: 6px; font-weight: 700; color: var(--primary); }
+  .dropzone span { font-size: 0.85rem; color: var(--muted); }
+  input[type=file] { display: none; }
+
+  /* Sticker List Rows & Drag-and-Drop */
+  .sticker-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    background: rgba(24, 24, 27, 0.45);
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, opacity 0.18s ease;
+  }
+  [data-theme="light"] .sticker-row { background: rgba(255, 255, 255, 0.7); }
+  .sticker-row:hover { border-color: rgba(220, 38, 38, 0.25); }
+  .sticker-row.dragging {
+    opacity: 0.45;
+    border: 1px dashed var(--primary);
+  }
+  .sticker-row.drag-over-top {
+    border-top: 2px solid var(--primary);
+  }
+  .sticker-row.drag-over-bottom {
+    border-bottom: 2px solid var(--primary);
+  }
+
+  .drag-handle {
+    cursor: grab;
+    color: var(--muted);
+    font-size: 1.2rem;
+    font-weight: 700;
+    padding: 6px 4px;
+    user-select: none;
+    line-height: 1;
+    border-radius: 6px;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  .drag-handle:hover {
+    color: var(--primary);
+    background: rgba(220, 38, 38, 0.1);
+  }
+  .drag-handle:active { cursor: grabbing; }
+  
+  .sticker-row .thumb {
+    width: 60px; height: 60px; flex-shrink: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    background: #09090b;
+  }
+  .sticker-row .thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .sticker-row .num { width: 28px; text-align: center; font-size: 0.85rem; color: var(--muted); font-weight: 700; flex-shrink: 0; }
+  
+  .sticker-row input[type=text] {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.88rem;
+    background: var(--input-bg);
+    color: var(--text);
+    min-width: 0;
+  }
+  .sticker-row input[type=text]:focus { outline: none; border-color: var(--primary); }
+
+  .icon-btn {
+    width: 38px; height: 38px; flex-shrink: 0;
+    border: 1px solid var(--border);
+    background: var(--theme-btn-bg);
+    color: var(--text);
+    border-radius: 10px;
+    font-size: 1.05rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .icon-btn:hover { background: var(--primary); border-color: var(--primary); color: #fff; transform: translateY(-1px); }
+  
+  .icon-btn.dup {
+    color: var(--success);
+    border-color: rgba(16, 185, 129, 0.28);
+    background: var(--success-light);
+  }
+  .icon-btn.dup:hover {
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+  }
+
+  .icon-btn.del { color: var(--danger); border-color: rgba(239, 68, 68, 0.25); }
+  .icon-btn.del:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+  .add-more-btn {
+    width: 100%;
+    padding: 13px;
+    border: 1px dashed var(--border);
+    background: transparent;
+    color: var(--text);
+    border-radius: 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: all 0.2s ease;
+  }
+  .add-more-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(220, 38, 38, 0.04); }
+
+  .empty-hint { text-align: center; color: var(--muted); font-size: 0.9rem; padding: 36px 0; }
+
+  /* Toast Notification */
+  .toast {
+    position: fixed;
+    top: 96px;
+    right: 24px;
+    background: var(--glass-header);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--primary);
+    color: var(--text);
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: var(--shadow);
+    z-index: 2000;
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+    transition: all 0.25s ease;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* Floating Dashboard Action Bar */
+  .action-bar {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 40px);
+    max-width: 920px;
+    background: var(--glass-footer);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 14px 20px;
+    display: flex;
+    gap: 12px;
+    box-shadow: var(--shadow);
+    z-index: 1000;
+  }
+  
+  .btn {
+    flex: 1;
+    padding: 13px 18px;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .btn.generate { background: var(--primary); color: #fff; }
+  .btn.generate:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3); }
+  
+  .btn.print { background: #ffffff; color: #09090b; border: 1px solid rgba(0,0,0,0.1); }
+  .btn.print:hover { background: #f4f4f5; transform: translateY(-2px); }
+  [data-theme="light"] .btn.print { background: #09090b; color: #fff; }
+  [data-theme="light"] .btn.print:hover { background: #27272a; }
+  
+  .btn.clear { background: transparent; color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.25); }
+  .btn.clear:hover { background: var(--danger-light); }
+
+  /* App Workspace Sticky Footer */
+  .app-footer {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 999;
+    text-align: center;
+    padding: 13px 24px;
+    font-size: 0.84rem;
+    color: var(--muted);
+    background: var(--glass-footer);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+    width: 100%;
+  }
+  .app-footer span { color: var(--primary); font-weight: 600; }
+
+  /* MATRIX CONFIGURATION AND RENDER FIX ENGINE */
+  #previewArea { margin-top: 32px; }
+  
+  .page {
+    background: #fff;
+    margin: 0 auto 32px auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+    display: flex;
+    flex-direction: column;
+    color: #000;
+    box-sizing: border-box;
+    overflow: hidden;
+    padding: var(--page-margin);
+  }
+  
+  .page-header, .page-footer {
+    text-align: center;
+    font-family: "Times New Roman", Times, serif;
+    padding: 3mm 0;
+    border-bottom: 2px solid #000;
+    font-weight: bold;
+    font-size: 11pt;
+    flex-shrink: 0;
+  }
+  .page-footer { border-bottom: none; border-top: 2px solid #000; margin-top: auto; }
+  
+  .grid-wrap { 
+    flex: 1; 
+    display: grid; 
+    gap: var(--grid-gap); 
+    padding: 4mm 0; 
+    min-height: 0; 
+  }
+  
+  .sticker {
+    border: 1px solid #000;
+    display: flex;
+    background: #fff;
+    padding: var(--sticker-padding);
+    overflow: hidden;
+    min-height: 0;
+    gap: 2mm;
+  }
+
+  /* Caption Position Variations (Flex Direction) */
+  .sticker.cap-bottom { flex-direction: column; }
+  .sticker.cap-top    { flex-direction: column-reverse; }
+  .sticker.cap-right  { flex-direction: row; }
+  .sticker.cap-left   { flex-direction: row-reverse; }
+  
+  .sticker .img-box {
+    flex: 1;
+    border: 1px solid #ccc;
+    background: #fafafa;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; 
+    min-height: 0;
+    min-width: 0;
+  }
+  .sticker .img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  
+  .sticker .cap-box {
+    border: 1px solid #000;
+    padding: 1.2mm 2.5mm;
+    font-family: "Times New Roman", Times, serif;
+    font-size: var(--caption-size);
+    font-weight: bold;
+    text-align: center;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    word-break: break-word;
+  }
+
+  /* Horizontal vs Vertical Text Orientation */
+  .sticker.text-horizontal .cap-box {
+    writing-mode: horizontal-tb;
+  }
+
+  .sticker.text-vertical .cap-box {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    padding: 2.5mm 1.2mm;
+    letter-spacing: 0.05em;
+  }
+
+  .sticker.cap-left .cap-box,
+  .sticker.cap-right .cap-box {
+    max-width: 36%;
+    min-width: 20%;
+  }
+
+  /* Printer Pipeline Layout Overrides */
+  @media print {
+    body { background: none !important; background-image: none !important; padding: 0 !important; margin: 0 !important; }
+    header.app-header, .bento-grid, .card, .action-bar, .add-more-btn, .app-footer, .toast { display: none !important; }
+    #previewArea { margin: 0 !important; padding: 0 !important; }
+    .page { margin: 0 !important; box-shadow: none !important; page-break-after: always !important; page-break-inside: avoid !important; }
+    .page:last-child { page-break-after: avoid !important; }
+  }
+
+  @media (max-width: 580px) {
+    .sticker-row { flex-wrap: wrap; }
+    .sticker-row input[type=text] { order: 3; width: 100%; flex-basis: 100%; }
+    .action-bar { padding: 10px; bottom: 52px; width: calc(100% - 16px); gap: 8px; }
+    .btn { padding: 10px; font-size: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<header class="app-header">
+  <div class="header-content">
+    <div class="theme-toggle-container">
+      <button class="theme-btn" id="themeToggleBtn">🌙 Dark Mode</button>
+    </div>
+    <h1>🧪 LabSticker — Figure Sheet Generator</h1>
+    <p>Upload lab graphics, customize captions &amp; grid layouts, and export print-ready figure sheets</p>
+  </div>
+</header>
+
+<div class="container">
+  <div class="bento-grid">
+    <!-- Sheet & Layout Settings -->
+    <div class="card">
+      <h2>⚙️ Sheet &amp; Layout Settings</h2>
+      <div class="row">
+        <div class="field">
+          <label>Header Text</label>
+          <input type="text" id="headerText" placeholder="e.g. Molecular Biology Isolation Matrix">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Footer Text</label>
+          <input type="text" id="footerText" placeholder="e.g. Student Name / Roll No: ____________">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Page Size</label>
+          <select id="pageSize">
+            <option value="A4">A4 (210 × 297 mm)</option>
+            <option value="Letter">US Letter (8.5 × 11 in)</option>
+            <option value="A3">A3 (297 × 420 mm)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Grid (Rows × Cols)</label>
+          <div class="grid-config-wrap">
+            <input type="number" id="gridRows" value="2" min="1" max="20" title="Number of Rows">
+            <div class="grid-config-separator">×</div>
+            <input type="number" id="gridCols" value="2" min="1" max="20" title="Number of Columns">
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Page Margin (mm)</label>
+          <input type="number" id="pageMargin" value="8" min="0" max="40" step="1" title="Printable page margin in millimeters">
+        </div>
+        <div class="field">
+          <label>Box Spacing / Gap (px)</label>
+          <input type="number" id="boxGap" value="16" min="0" max="100" title="Spacing between sticker boxes">
+        </div>
+        <div class="field">
+          <label>Inner Padding (px)</label>
+          <input type="number" id="boxPadding" value="12" min="0" max="100" title="Inner spacing inside sticker boxes">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Auto-Number Captions</label>
+          <select id="autoNumberMode">
+            <option value="none">None</option>
+            <option value="fig_dot">Fig. 1, Fig. 2…</option>
+            <option value="figure_full">Figure 1, Figure 2…</option>
+            <option value="num_only">1, 2, 3…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Caption Position</label>
+          <select id="captionPosition">
+            <option value="bottom">Bottom</option>
+            <option value="top">Top</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Text Orientation</label>
+          <select id="captionOrientation">
+            <option value="horizontal">Horizontal Text</option>
+            <option value="vertical">Vertical Text</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Caption Size (pt)</label>
+          <input type="number" id="captionFontSize" value="10" min="6" max="36" step="0.5" title="Caption font size in points">
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Upload & Project Storage -->
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+      <div>
+        <h2>📥 Upload Images</h2>
+        <div class="dropzone" id="dropzone">
+          <strong>Drop Images Here</strong>
+          <span>or click to browse files from your device</span>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" multiple>
+      </div>
+
+      <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border);">
+        <h2 style="margin-bottom: 12px; font-size: 0.92rem;">💾 Project Save &amp; Backup</h2>
+        <div class="project-tools">
+          <button class="tool-btn" id="saveLocalBtn" title="Save project to browser storage">💾 Save</button>
+          <button class="tool-btn" id="loadLocalBtn" title="Load saved project from browser storage">📂 Load</button>
+          <button class="tool-btn" id="exportJsonBtn" title="Download project as a .json file">⬇️ Export JSON</button>
+          <button class="tool-btn" id="importJsonBtn" title="Import a saved .json project file">⬆️ Import JSON</button>
+          <input type="file" id="jsonFileInput" accept=".json,application/json">
+        </div>
+      </div>
+    </div>
+
+    <!-- Sticker Queue -->
+    <div class="card full-width">
+      <div class="card-header-flex">
+        <h2>📋 Figure Queue <span id="countLabel" style="color:var(--primary); font-weight:700;"></span></h2>
+        <span style="font-size: 0.8rem; color: var(--muted);">Drag <strong>⋮⋮</strong> to reorder</span>
+      </div>
+      <div id="stickerList"></div>
+      <div id="emptyHint" class="empty-hint">No images uploaded yet. Drop or select images above to start building your sheet.</div>
+      <button class="add-more-btn" id="addMoreBtn">+ Add More Images</button>
+    </div>
+  </div>
+
+  <div id="previewArea"></div>
+</div>
+
+<div class="action-bar">
+  <button class="btn clear" id="clearBtn">🗑️ Clear All</button>
+  <button class="btn generate" id="generateBtn">⚡ Generate Sheet</button>
+  <button class="btn print" id="printBtn">🖨️ Print / Save PDF</button>
+</div>
+
+<footer class="app-footer">
+  &copy; 2026 LabSticker. Developed by <span>Vijay B. Chauhan</span> &bull; Powered by <span>Chauhan's Tech Solutions Innovation</span>
+</footer>
+
+<script>
+const STORAGE_KEY = 'labsticker_saved_project_v1';
+let stickers = [];
+let idCounter = 0;
+let dragSrcIndex = null;
+
+const stickerList = document.getElementById('stickerList');
+const emptyHint = document.getElementById('emptyHint');
+const countLabel = document.getElementById('countLabel');
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const jsonFileInput = document.getElementById('jsonFileInput');
+const addMoreBtn = document.getElementById('addMoreBtn');
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const toastEl = document.getElementById('toast');
+
+let toastTimer = null;
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2600);
+}
+
+themeToggleBtn.addEventListener('click', () => {
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  if (currentTheme === 'light') {
+    document.documentElement.removeAttribute('data-theme');
+    themeToggleBtn.innerHTML = '🌙 Dark Mode';
+  } else {
+    document.documentElement.setAttribute('data-theme', 'light');
+    themeToggleBtn.innerHTML = '☀️ Light Mode';
+  }
+});
+
+function handleFiles(files) {
+  ([...files]).forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      stickers.push({
+        id: idCounter++,
+        dataUrl: e.target.result,
+        caption: '',
+        rotation: 0,
+        flip: false
+      });
+      renderList();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+dropzone.addEventListener('click', () => fileInput.click());
+addMoreBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => {
+  handleFiles(e.target.files);
+  fileInput.value = '';
+});
+
+dropzone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropzone.classList.add('dragover');
+});
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+
+function getAutoNumberPrefix(mode, index) {
+  const num = index + 1;
+  switch (mode) {
+    case 'fig_dot': return `Fig. ${num}`;
+    case 'figure_full': return `Figure ${num}`;
+    case 'num_only': return `${num}`;
+    default: return '';
+  }
+}
+
+function formatCaption(rawCaption, index, mode) {
+  const clean = (rawCaption || '').trim();
+  const autoPrefix = getAutoNumberPrefix(mode, index);
+  if (!autoPrefix) return clean;
+  if (!clean) return autoPrefix;
+  return `${autoPrefix}: ${clean}`;
+}
+
+function renderList() {
+  stickerList.innerHTML = '';
+  emptyHint.style.display = stickers.length ? 'none' : 'block';
+  countLabel.textContent = stickers.length ? `(${stickers.length} ${stickers.length === 1 ? 'Item' : 'Items'})` : '';
+
+  const autoMode = document.getElementById('autoNumberMode').value;
+
+  stickers.forEach((s, idx) => {
+    const row = document.createElement('div');
+    row.className = 'sticker-row';
+    row.dataset.index = idx;
+
+    const autoHint = getAutoNumberPrefix(autoMode, idx);
+    const placeholderText = autoHint
+      ? `Caption (blank = "${autoHint}")`
+      : 'Enter figure caption...';
+
+    row.innerHTML = `
+      <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
+      <div class="num">#${idx + 1}</div>
+      <div class="thumb">
+        <img src="${s.dataUrl}" style="transform: rotate(${s.rotation}deg) scaleX(${s.flip ? -1 : 1});">
+      </div>
+      <input type="text" placeholder="${placeholderText.replace(/"/g, '&quot;')}" value="${s.caption.replace(/"/g, '&quot;')}" data-id="${s.id}" class="cap-input">
+      <button class="icon-btn dup" data-id="${s.id}" title="Duplicate Sticker">⧉</button>
+      <button class="icon-btn rotate" data-id="${s.id}" title="Rotate 90°">↻</button>
+      <button class="icon-btn flip" data-id="${s.id}" title="Flip Horizontal">⇋</button>
+      <button class="icon-btn del" data-id="${s.id}" title="Remove Sticker">✕</button>
+    `;
+
+    // Enable drag only when initiated from the ⋮⋮ handle
+    const handle = row.querySelector('.drag-handle');
+    handle.addEventListener('mousedown', () => { row.draggable = true; });
+    handle.addEventListener('mouseup', () => { row.draggable = false; });
+
+    row.addEventListener('dragstart', e => {
+      dragSrcIndex = idx;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(idx));
+    });
+
+    row.addEventListener('dragend', () => {
+      row.draggable = false;
+      row.classList.remove('dragging');
+      document.querySelectorAll('.sticker-row').forEach(r => {
+        r.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+    });
+
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (dragSrcIndex === null || dragSrcIndex === idx) return;
+      const rect = row.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      row.classList.remove('drag-over-top', 'drag-over-bottom');
+      if (e.clientY < midY) {
+        row.classList.add('drag-over-top');
+      } else {
+        row.classList.add('drag-over-bottom');
+      }
+    });
+
+    row.addEventListener('dragleave', () => {
+      row.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      row.classList.remove('drag-over-top', 'drag-over-bottom');
+      if (dragSrcIndex === null || dragSrcIndex === idx) return;
+
+      const rect = row.getBoundingClientRect();
+      const insertAfter = e.clientY >= rect.top + rect.height / 2;
+      const [movedItem] = stickers.splice(dragSrcIndex, 1);
+
+      let targetIndex = idx;
+      if (dragSrcIndex < idx) targetIndex--;
+      if (insertAfter) targetIndex++;
+
+      stickers.splice(targetIndex, 0, movedItem);
+      dragSrcIndex = null;
+      renderList();
+    });
+
+    stickerList.appendChild(row);
+  });
+
+  document.querySelectorAll('.cap-input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const s = stickers.find(x => x.id == e.target.dataset.id);
+      if (s) s.caption = e.target.value;
+    });
+  });
+
+  document.querySelectorAll('.icon-btn.dup').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const idx = stickers.findIndex(x => x.id == e.currentTarget.dataset.id);
+      if (idx !== -1) {
+        const orig = stickers[idx];
+        const copy = {
+          id: idCounter++,
+          dataUrl: orig.dataUrl,
+          caption: orig.caption,
+          rotation: orig.rotation,
+          flip: orig.flip
+        };
+        stickers.splice(idx + 1, 0, copy);
+        renderList();
+        showToast('Sticker duplicated');
+      }
+    });
+  });
+
+  document.querySelectorAll('.icon-btn.rotate').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const s = stickers.find(x => x.currentTarget.dataset.id);
+      if (s) { s.rotation = (s.rotation + 90) % 360; renderList(); }
+    });
+  });
+
+  document.querySelectorAll('.icon-btn.flip').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const s = stickers.find(x => x.id == e.currentTarget.dataset.id);
+      if (s) { s.flip = !s.flip; renderList(); }
+    });
+  });
+
+  document.querySelectorAll('.icon-btn.del').forEach(btn => {
+    btn.addEventListener('click', e => {
+      stickers = stickers.filter(x => x.id != e.currentTarget.dataset.id);
+      renderList();
+    });
+  });
+}
+
+document.getElementById('autoNumberMode').addEventListener('change', renderList);
+
+/* Project State Serialization (Save / Load / Export / Import) */
+function getProjectState() {
+  return {
+    version: 3,
+    savedAt: new Date().toISOString(),
+    settings: {
+      headerText: document.getElementById('headerText').value,
+      footerText: document.getElementById('footerText').value,
+      pageSize: document.getElementById('pageSize').value,
+      gridRows: document.getElementById('gridRows').value,
+      gridCols: document.getElementById('gridCols').value,
+      pageMargin: document.getElementById('pageMargin').value,
+      boxGap: document.getElementById('boxGap').value,
+      boxPadding: document.getElementById('boxPadding').value,
+      autoNumberMode: document.getElementById('autoNumberMode').value,
+      captionPosition: document.getElementById('captionPosition').value,
+      captionOrientation: document.getElementById('captionOrientation').value,
+      captionFontSize: document.getElementById('captionFontSize').value
+    },
+    stickers: stickers.map(s => ({
+      dataUrl: s.dataUrl,
+      caption: s.caption || '',
+      rotation: s.rotation || 0,
+      flip: !!s.flip
+    }))
+  };
+}
+
+function applyProjectState(data) {
+  if (!data || !Array.isArray(data.stickers)) {
+    throw new Error('Invalid project structure');
+  }
+  const st = data.settings || {};
+  if (st.headerText !== undefined) document.getElementById('headerText').value = st.headerText;
+  if (st.footerText !== undefined) document.getElementById('footerText').value = st.footerText;
+  if (st.pageSize !== undefined) document.getElementById('pageSize').value = st.pageSize;
+  if (st.gridRows !== undefined) document.getElementById('gridRows').value = st.gridRows;
+  if (st.gridCols !== undefined) document.getElementById('gridCols').value = st.gridCols;
+  if (st.pageMargin !== undefined) document.getElementById('pageMargin').value = st.pageMargin;
+  if (st.boxGap !== undefined) document.getElementById('boxGap').value = st.boxGap;
+  if (st.boxPadding !== undefined) document.getElementById('boxPadding').value = st.boxPadding;
+  if (st.autoNumberMode !== undefined) document.getElementById('autoNumberMode').value = st.autoNumberMode;
+  if (st.captionPosition !== undefined) document.getElementById('captionPosition').value = st.captionPosition;
+  if (st.captionOrientation !== undefined) document.getElementById('captionOrientation').value = st.captionOrientation;
+  if (st.captionFontSize !== undefined) document.getElementById('captionFontSize').value = st.captionFontSize;
+
+  stickers = data.stickers.map(item => ({
+    id: idCounter++,
+    dataUrl: item.dataUrl,
+    caption: item.caption || '',
+    rotation: Number(item.rotation) || 0,
+    flip: Boolean(item.flip)
+  }));
+
+  renderList();
+  if (stickers.length > 0) {
+    generateSheet(false);
+  } else {
+    document.getElementById('previewArea').innerHTML = '';
+  }
+}
+
+document.getElementById('saveLocalBtn').addEventListener('click', () => {
+  try {
+    const payload = JSON.stringify(getProjectState());
+    localStorage.setItem(STORAGE_KEY, payload);
+    showToast('✅ Project saved in browser');
+  } catch (err) {
+    alert('Unable to save to browser storage (images may exceed localStorage quota). Use "Export JSON" to download a backup file instead.');
+  }
+});
+
+document.getElementById('loadLocalBtn').addEventListener('click', () => {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    alert('No saved project found in browser storage.');
+    return;
+  }
+  if (stickers.length > 0 && !confirm('Replace current workspace with your saved browser project?')) {
+    return;
+  }
+  try {
+    applyProjectState(JSON.parse(raw));
+    showToast('📂 Saved project loaded');
+  } catch (err) {
+    alert('Saved project data appears corrupted and could not be loaded.');
+  }
+});
+
+document.getElementById('exportJsonBtn').addEventListener('click', () => {
+  const state = getProjectState();
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `LabSticker_Project_${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('⬇️ Project JSON exported');
+});
+
+document.getElementById('importJsonBtn').addEventListener('click', () => {
+  jsonFileInput.click();
+});
+
+jsonFileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      applyProjectState(parsed);
+      showToast('⬆️ Project JSON imported');
+    } catch (err) {
+      alert('Invalid JSON project file. Please choose a valid LabSticker .json export.');
+    }
+  };
+  reader.readAsText(file);
+  jsonFileInput.value = '';
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (confirm('Clear all uploaded images and reset the preview sheet?')) {
+    stickers = [];
+    document.getElementById('previewArea').innerHTML = '';
+    renderList();
+    showToast('Workspace cleared');
+  }
+});
+
+const PAGE_SIZES = {
+  A4: { w: 210, h: 297 },
+  Letter: { w: 215.9, h: 279.4 },
+  A3: { w: 297, h: 420 }
+};
+
+function generateSheet(shouldScroll = true) {
+  if (stickers.length === 0) {
+    alert('No images in the queue. Please upload at least one image first.');
+    return;
+  }
+
+  // Apply dynamic spacing, margin, and caption font size variables
+  const chosenGap = parseFloat(document.getElementById('boxGap').value);
+  const chosenPadding = parseFloat(document.getElementById('boxPadding').value);
+  const chosenMargin = parseFloat(document.getElementById('pageMargin').value);
+  const chosenFontSize = parseFloat(document.getElementById('captionFontSize').value);
+
+  document.documentElement.style.setProperty('--grid-gap', (isNaN(chosenGap) ? 16 : chosenGap) + 'px');
+  document.documentElement.style.setProperty('--sticker-padding', (isNaN(chosenPadding) ? 12 : chosenPadding) + 'px');
+  document.documentElement.style.setProperty('--page-margin', (isNaN(chosenMargin) ? 8 : chosenMargin) + 'mm');
+  document.documentElement.style.setProperty('--caption-size', (isNaN(chosenFontSize) ? 10 : chosenFontSize) + 'pt');
+
+  const headerText = document.getElementById('headerText').value.trim();
+  const footerText = document.getElementById('footerText').value.trim();
+  const pageSizeKey = document.getElementById('pageSize').value;
+  const autoMode = document.getElementById('autoNumberMode').value;
+  const capPosition = document.getElementById('captionPosition').value;
+  const capOrientation = document.getElementById('captionOrientation').value;
+
+  let rows = parseInt(document.getElementById('gridRows').value, 10);
+  let cols = parseInt(document.getElementById('gridCols').value, 10);
+
+  if (isNaN(rows) || rows < 1) rows = 1;
+  if (isNaN(cols) || cols < 1) cols = 1;
+
+  const perPage = rows * cols;
+  const { w, h } = PAGE_SIZES[pageSizeKey];
+
+  const previewArea = document.getElementById('previewArea');
+  previewArea.innerHTML = '';
+
+  for (let i = 0; i < stickers.length; i += perPage) {
+    const chunk = stickers.slice(i, i + perPage);
+    const page = document.createElement('div');
+    page.className = 'page';
+    page.style.width = w + 'mm';
+    page.style.height = h + 'mm';
+
+    if (headerText) {
+      const hd = document.createElement('div');
+      hd.className = 'page-header';
+      hd.textContent = headerText;
+      page.appendChild(hd);
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'grid-wrap';
+    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+
+    chunk.forEach((s, localIdx) => {
+      const globalIdx = i + localIdx;
+      const finalCaption = formatCaption(s.caption, globalIdx, autoMode);
+      const escapedCaption = finalCaption.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      const box = document.createElement('div');
+      box.className = `sticker cap-${capPosition} text-${capOrientation}`;
+      box.innerHTML = `
+        <div class="img-box">
+          <img src="${s.dataUrl}" style="transform: rotate(${s.rotation}deg) scaleX(${s.flip ? -1 : 1});">
+        </div>
+        <div class="cap-box">${escapedCaption || '&nbsp;'}</div>
+      `;
+      grid.appendChild(box);
+    });
+
+    page.appendChild(grid);
+
+    if (footerText) {
+      const ft = document.createElement('div');
+      ft.className = 'page-footer';
+      ft.textContent = footerText;
+      page.appendChild(ft);
+    }
+
+    previewArea.appendChild(page);
+  }
+
+  if (shouldScroll) {
+    previewArea.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+document.getElementById('generateBtn').addEventListener('click', () => generateSheet(true));
+document.getElementById('printBtn').addEventListener('click', () => {
+  if (document.getElementById('previewArea').children.length === 0) {
+    generateSheet(false);
+  }
+  if (stickers.length > 0) {
+    setTimeout(() => window.print(), 150);
+  }
+});
+
+renderList();
+</script>
+</body>
+</html>
