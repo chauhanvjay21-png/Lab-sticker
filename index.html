@@ -508,53 +508,76 @@
   /* MATRIX CONFIGURATION AND RENDER FIX ENGINE */
   #previewArea { margin-top: 32px; }
   
-  .page {
-    background: #fff;
-    margin: 0 auto 32px auto;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
-    display: flex;
-    flex-direction: column;
-    color: #000;
-    box-sizing: border-box;
-    overflow: hidden;
-    padding: var(--page-margin);
-  }
+ .page {
+  background: #fff;
+  margin: 0 auto 32px auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+  color: #000;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 3mm;                    /* reduced margin */
+  position: relative;              /* needed for watermark */
+}
   
-  .page-header, .page-footer {
-    text-align: center;
-    font-family: "Times New Roman", Times, serif;
-    padding: 3mm 0;
-    border-bottom: 2px solid #000;
-    font-weight: bold;
-    font-size: 11pt;
-    flex-shrink: 0;
-  }
-  .page-footer { border-bottom: none; border-top: 2px solid #000; margin-top: auto; }
+/* Very light watermark behind everything */
+.page-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 65%;
+  max-width: 480px;
+  opacity: 0.055;                  /* very light – does not affect print quality */
+  pointer-events: none;
+  z-index: 0;
+}
 
-/* Powered-by line on generated sheets (always black + stuck to bottom) */
+.page-header,
+.page-footer,
+.grid-wrap,
+.page-powered {
+  position: relative;
+  z-index: 1;                      /* stickers & text stay above watermark */
+}
+
+.page-header, .page-footer {
+  text-align: center;
+  font-family: "Times New Roman", Times, serif;
+  padding: 2.5mm 0;
+  border-bottom: 2px solid #000;
+  font-weight: bold;
+  font-size: 11pt;
+  flex-shrink: 0;
+}
+
+.page-footer {
+  border-bottom: none;
+  border-top: 2px solid #000;
+  margin-top: auto;
+}
+
+/* Company footer – now right aligned + larger */
 .page-powered {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 2.5mm 0 1mm 0;
+  justify-content: flex-end;       /* ← moved to the right */
+  gap: 8px;
+  padding: 3mm 4mm 2mm 0;
   font-family: "Times New Roman", Times, serif;
-  font-size: 8.5pt;
+  font-size: 10pt;                 /* larger text */
   color: #000;
   border-top: 1px solid #ccc;
   flex-shrink: 0;
-  margin-top: auto;          /* ← this is the key line */
+  margin-top: auto;
 }
-  .page-powered svg {
-    height: 16px;
-    width: auto;
-    display: inline-block;
-    vertical-align: middle;
-  }
-  .page-footer {
-  border-bottom: none;
-  border-top: 2px solid #000;
-  margin-top: auto;          /* already present – keep it */
+
+.page-powered svg {
+  height: 22px;                    /* larger logo */
+  width: auto;
+  display: inline-block;
+  vertical-align: middle;
 }
   
   .grid-wrap { 
@@ -1184,7 +1207,7 @@ function generateSheet(shouldScroll = true) {
 
   document.documentElement.style.setProperty('--grid-gap', (isNaN(chosenGap) ? 16 : chosenGap) + 'px');
   document.documentElement.style.setProperty('--sticker-padding', (isNaN(chosenPadding) ? 12 : chosenPadding) + 'px');
-  document.documentElement.style.setProperty('--page-margin', (isNaN(chosenMargin) ? 8 : chosenMargin) + 'mm');
+  document.documentElement.style.setProperty('--page-margin', '3mm');
   document.documentElement.style.setProperty('--caption-size', (isNaN(chosenFontSize) ? 10 : chosenFontSize) + 'pt');
 
   const headerText = document.getElementById('headerText').value.trim();
@@ -1212,6 +1235,13 @@ function generateSheet(shouldScroll = true) {
     page.className = 'page';
     page.style.width = w + 'mm';
     page.style.height = h + 'mm';
+    
+// === ADD THIS WATERMARK ===
+const watermark = document.createElement('div');
+watermark.className = 'page-watermark';
+watermark.innerHTML = CTS_LOGO_SVG; // re-uses the same logo you already have
+page.appendChild(watermark);
+// ==========================
 
     if (headerText) {
       const hd = document.createElement('div');
