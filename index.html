@@ -648,6 +648,40 @@
     min-width: 20%;
   }
 
+  /* No-caption mode: image fills the entire sticker cell */
+  .sticker.no-caption {
+    flex-direction: column;
+  }
+  .sticker.no-caption .img-box {
+    flex: 1 1 auto;
+    border: 1px solid #ccc;
+  }
+
+  /* Per-sticker caption toggle in the figure queue */
+  .cap-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    padding: 4px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--theme-btn-bg);
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+  .cap-toggle:hover { border-color: var(--primary); color: var(--text); }
+  .cap-toggle input { accent-color: var(--primary); width: 14px; height: 14px; margin: 0; cursor: pointer; }
+  .cap-toggle.active {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(220, 38, 38, 0.1);
+  }
+
   /* Printer Pipeline Layout Overrides */
   @media print {
     body { background: none !important; background-image: none !important; padding: 0 !important; margin: 0 !important; }
@@ -729,6 +763,13 @@
         </div>
       </div>
       <div class="row">
+        <div class="field">
+          <label>Show Captions</label>
+          <select id="showCaptions" title="Enable or disable captions on the generated sheet">
+            <option value="yes" selected>Yes (with captions)</option>
+            <option value="no">No (images only)</option>
+          </select>
+        </div>
         <div class="field">
           <label>Auto-Number Captions</label>
           <select id="autoNumberMode">
@@ -872,7 +913,8 @@ function handleFiles(files) {
         dataUrl: e.target.result,
         caption: '',
         rotation: 0,
-        flip: false
+        flip: false,
+        includeCaption: true
       });
       renderList();
     };
@@ -933,6 +975,7 @@ function renderList() {
       ? `Caption (blank = "${autoHint}")`
       : 'Enter figure caption...';
 
+    const capOn = s.includeCaption !== false;
     row.innerHTML = `
       <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
       <div class="num">#${idx + 1}</div>
@@ -940,6 +983,10 @@ function renderList() {
         <img src="${s.dataUrl}" style="transform: rotate(${s.rotation}deg) scaleX(${s.flip ? -1 : 1});">
       </div>
       <input type="text" placeholder="${placeholderText.replace(/"/g, '&quot;')}" value="${s.caption.replace(/"/g, '&quot;')}" data-id="${s.id}" class="cap-input">
+      <label class="cap-toggle ${capOn ? 'active' : ''}" title="Include caption for this figure on the sheet">
+        <input type="checkbox" class="include-cap" data-id="${s.id}" ${capOn ? 'checked' : ''}>
+        Cap
+      </label>
       <button class="icon-btn dup" data-id="${s.id}" title="Duplicate Sticker">⧉</button>
       <button class="icon-btn rotate" data-id="${s.id}" title="Rotate 90°">↻</button>
       <button class="icon-btn flip" data-id="${s.id}" title="Flip Horizontal">⇋</button>
@@ -1011,6 +1058,17 @@ function renderList() {
     });
   });
 
+  document.querySelectorAll('.include-cap').forEach(chk => {
+    chk.addEventListener('change', e => {
+      const s = stickers.find(x => x.id == e.target.dataset.id);
+      if (s) {
+        s.includeCaption = e.target.checked;
+        const label = e.target.closest('.cap-toggle');
+        if (label) label.classList.toggle('active', e.target.checked);
+      }
+    });
+  });
+
   document.querySelectorAll('.icon-btn.dup').forEach(btn => {
     btn.addEventListener('click', e => {
       const idx = stickers.findIndex(x => x.id == e.currentTarget.dataset.id);
@@ -1021,7 +1079,8 @@ function renderList() {
           dataUrl: orig.dataUrl,
           caption: orig.caption,
           rotation: orig.rotation,
-          flip: orig.flip
+          flip: orig.flip,
+          includeCaption: orig.includeCaption !== false
         };
         stickers.splice(idx + 1, 0, copy);
         renderList();
@@ -1057,7 +1116,7 @@ document.getElementById('autoNumberMode').addEventListener('change', renderList)
 /* Project State Serialization (Save / Load / Export / Import) */
 function getProjectState() {
   return {
-    version: 3,
+    version: 4,
     savedAt: new Date().toISOString(),
     settings: {
       headerText: document.getElementById('headerText').value,
@@ -1068,6 +1127,7 @@ function getProjectState() {
       pageMargin: document.getElementById('pageMargin').value,
       boxGap: document.getElementById('boxGap').value,
       boxPadding: document.getElementById('boxPadding').value,
+      showCaptions: document.getElementById('showCaptions').value,
       autoNumberMode: document.getElementById('autoNumberMode').value,
       captionPosition: document.getElementById('captionPosition').value,
       captionOrientation: document.getElementById('captionOrientation').value,
@@ -1077,7 +1137,8 @@ function getProjectState() {
       dataUrl: s.dataUrl,
       caption: s.caption || '',
       rotation: s.rotation || 0,
-      flip: !!s.flip
+      flip: !!s.flip,
+      includeCaption: s.includeCaption !== false
     }))
   };
 }
@@ -1095,6 +1156,7 @@ function applyProjectState(data) {
   if (st.pageMargin !== undefined) document.getElementById('pageMargin').value = st.pageMargin;
   if (st.boxGap !== undefined) document.getElementById('boxGap').value = st.boxGap;
   if (st.boxPadding !== undefined) document.getElementById('boxPadding').value = st.boxPadding;
+  if (st.showCaptions !== undefined) document.getElementById('showCaptions').value = st.showCaptions;
   if (st.autoNumberMode !== undefined) document.getElementById('autoNumberMode').value = st.autoNumberMode;
   if (st.captionPosition !== undefined) document.getElementById('captionPosition').value = st.captionPosition;
   if (st.captionOrientation !== undefined) document.getElementById('captionOrientation').value = st.captionOrientation;
@@ -1105,7 +1167,8 @@ function applyProjectState(data) {
     dataUrl: item.dataUrl,
     caption: item.caption || '',
     rotation: Number(item.rotation) || 0,
-    flip: Boolean(item.flip)
+    flip: Boolean(item.flip),
+    includeCaption: item.includeCaption !== false
   }));
 
   renderList();
@@ -1214,6 +1277,7 @@ function generateSheet(shouldScroll = true) {
   const headerText = document.getElementById('headerText').value.trim();
   const footerText = document.getElementById('footerText').value.trim();
   const pageSizeKey = document.getElementById('pageSize').value;
+  const showCaptionsGlobal = document.getElementById('showCaptions').value === 'yes';
   const autoMode = document.getElementById('autoNumberMode').value;
   const capPosition = document.getElementById('captionPosition').value;
   const capOrientation = document.getElementById('captionOrientation').value;
@@ -1260,15 +1324,25 @@ page.appendChild(watermark);
       const globalIdx = i + localIdx;
       const finalCaption = formatCaption(s.caption, globalIdx, autoMode);
       const escapedCaption = finalCaption.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const showThisCap = showCaptionsGlobal && (s.includeCaption !== false);
 
       const box = document.createElement('div');
-      box.className = `sticker cap-${capPosition} text-${capOrientation}`;
-      box.innerHTML = `
-        <div class="img-box">
-          <img src="${s.dataUrl}" style="transform: rotate(${s.rotation}deg) scaleX(${s.flip ? -1 : 1});">
-        </div>
-        <div class="cap-box">${escapedCaption || '&nbsp;'}</div>
-      `;
+      if (showThisCap) {
+        box.className = `sticker cap-${capPosition} text-${capOrientation}`;
+        box.innerHTML = `
+          <div class="img-box">
+            <img src="${s.dataUrl}" style="transform: rotate(${s.rotation}deg) scaleX(${s.flip ? -1 : 1});">
+          </div>
+          <div class="cap-box">${escapedCaption || '&nbsp;'}</div>
+        `;
+      } else {
+        box.className = 'sticker no-caption';
+        box.innerHTML = `
+          <div class="img-box">
+            <img src="${s.dataUrl}" style="transform: rotate(${s.rotation}deg) scaleX(${s.flip ? -1 : 1});">
+          </div>
+        `;
+      }
       grid.appendChild(box);
     });
 
